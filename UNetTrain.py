@@ -54,8 +54,8 @@ transforms = transforms.Compose([transforms.ToPILImage(),
 	transforms.ToTensor()])
 
 # create the train and test datasets
-trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=False)[0:1]
-testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=False)[0:1]
+trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=False)
+testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=False)
 print(f"[INFO] found {len(trainDS)} examples in the training set...")
 print(f"[INFO] found {len(testDS)} examples in the test set...")
 
@@ -81,19 +81,12 @@ testSteps = len(testDS) // config.BATCH_SIZE
 H = {"train_loss": [], "test_loss": []}
 
 
-checkpoint = torch.load("/local/scratch/public/obc22/trainCheckpts/epoch319.pt")
-unet.load_state_dict(checkpoint['model_state_dict'])
-opt.load_state_dict(checkpoint['optimizer_state_dict'])
-epoch = checkpoint['epoch']
-loss = checkpoint['loss']
-
-
 # loop over epochs
 startTime = time.time()
 print("Training started at: ", startTime)
 
 #tqdm gives a progress bar showing how much training done
-for e in tqdm(range(epoch, config.NUM_EPOCHS)):
+for e in tqdm(range(config.NUM_EPOCHS)):
 	# set the model in training mode
 	unet.train()
 	# initialize the total traininçg and validation loss

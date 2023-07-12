@@ -54,8 +54,8 @@ transforms = transforms.Compose([transforms.ToPILImage(),
 	transforms.ToTensor()])
 
 # create the train and test datasets
-trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=False)[0:1]
-testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=False)[0:1]
+trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=False)
+testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=False)
 print(f"[INFO] found {len(trainDS)} examples in the training set...")
 print(f"[INFO] found {len(testDS)} examples in the test set...")
 
@@ -81,19 +81,12 @@ testSteps = len(testDS) // config.BATCH_SIZE
 H = {"train_loss": [], "test_loss": []}
 
 
-checkpoint = torch.load("/local/scratch/public/obc22/trainCheckpts/epoch319.pt")
-unet.load_state_dict(checkpoint['model_state_dict'])
-opt.load_state_dict(checkpoint['optimizer_state_dict'])
-epoch = checkpoint['epoch']
-loss = checkpoint['loss']
-
-
 # loop over epochs
 startTime = time.time()
 print("Training started at: ", startTime)
 
 #tqdm gives a progress bar showing how much training done
-for e in tqdm(range(epoch, config.NUM_EPOCHS)):
+for e in tqdm(range(config.NUM_EPOCHS)):
 	# set the model in training mode
 	unet.train()
 	# initialize the total traininçg and validation loss
@@ -103,66 +96,4 @@ for e in tqdm(range(epoch, config.NUM_EPOCHS)):
 	for (i, (x, y)) in enumerate(trainLoader):
 		# send the input to the device
 		(x, y) = (x.to(dev), y.to(dev))
-		# perform a forward pass and calculate the training loss
-		pred = unet(x)
-		#pred = pred / torch.max(pred)
-		#y = y / torch.max(y)
-		loss = lossFunc(pred, y)
-		# first, zero out any previously accumulated gradients, then
-		# perform backpropagation, and then update model parameters
-		opt.zero_grad()
-		loss.backward()
-		opt.step()
-		# add the loss to the total training loss so far
-		totalTrainLoss += loss
-	# switch off autograd
-	with torch.no_grad():
-		# set the model in evaluation modde
-		unet.eval()
-		# loop over the validation set
-		for (x, y) in testLoader:
-			# send the input to the device
-			(x, y) = (x.to(dev), y.to(dev))
-			# make the predictions and calculate the validation loss
-			pred = unet(x)
-			totalTestLoss += lossFunc(pred, y)
-	# calculate the average training and validation loss
-	avgTrainLoss = totalTrainLoss / trainSteps
-	avgTestLoss = totalTestLoss / testSteps
-	# update our training history
-	H["train_loss"].append(avgTrainLoss.cpu().detach().numpy())
-	H["test_loss"].append(avgTestLoss.cpu().detach().numpy())
-	# print the model training and validation information
-	print("[INFO] EPOCH: {}/{}".format(e + 1, config.NUM_EPOCHS))
-	print("Train loss: {:.6f}, Test loss: {:.4f}".format(
-		avgTrainLoss, avgTestLoss))
-	if (e+1) % 40 == 0:
-		torch.save(
-		{'epoch': e+1,
-		'model_state_dict': unet.state_dict(),
-		'optimizer_state_dict': opt.state_dict(),
-		'loss': loss,
-		}, 
-		"/local/scratch/public/obc22/trainCheckpts/epoch{}.pt".format(e))
-# display the total time needed to perform the training
-endTime = time.time()
-print("[INFO] total time taken to train the model: {:.2f}s".format(
-	endTime - startTime))
-
-plt.style.use("ggplot")
-plt.figure()
-plt.plot(H["train_loss"], label="train_loss")
-#plt.plot(H["test_loss"], label="test_loss")
-plt.title("Training Loss on Dataset")
-plt.xlabel("Epoch #")
-plt.ylabel("Loss")
-plt.legend(loc="lower left")
-plt.savefig("/home/obc22/aitomotools/AItomotools/tmp.png")
-
-torch.save(unet, "/local/scratch/public/obc22/trainCheckpts/trainedUNET.pth")
-
-
-print("Done")
-
-#job no 63606
-
+		print(x)

@@ -16,7 +16,7 @@ from torchvision import transforms
 from tqdm import tqdm
 import time
 
-from UNet import UNet
+from ItNet import ItNet
 from ItNetDataLoader import loadData
 import config
 
@@ -54,38 +54,31 @@ transforms = transforms.Compose([transforms.ToPILImage(),
 	transforms.ToTensor()])
 
 # create the train and test datasets
-trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=False)[0:1]
-testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=False)[0:1]
+trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=True)
+testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=True)
 print(f"[INFO] found {len(trainDS)} examples in the training set...")
 print(f"[INFO] found {len(testDS)} examples in the test set...")
 
 
 # create the training and test data loaders
 trainLoader = DataLoader(trainDS, shuffle=True,
-	batch_size=config.BATCH_SIZE, pin_memory=True)
+	batch_size=config.ITNET_BATCH_SIZE, pin_memory=True)
 
 
 testLoader = DataLoader(testDS, shuffle=False,
-	batch_size=config.BATCH_SIZE, pin_memory=True)
+	batch_size=config.ITNET_BATCH_SIZE, pin_memory=True)
 
 
 # initialize our UNet model
-unet = UNet().to(dev)
+itnet = ItNet().to(dev)
 # initialize loss function and optimizer
 lossFunc = nn.MSELoss()
-opt = Adam(unet.parameters(), lr=config.INIT_LR)
+opt = Adam(itnet.parameters())
 # calculate steps per epoch for training and test set
-trainSteps = len(trainDS) // config.BATCH_SIZE
-testSteps = len(testDS) // config.BATCH_SIZE
+trainSteps = len(trainDS) // config.ITNET_BATCH_SIZE
+testSteps = len(testDS) // config.ITNET_BATCH_SIZE
 # initialize a dictionary to store training history
 H = {"train_loss": [], "test_loss": []}
-
-
-checkpoint = torch.load("/local/scratch/public/obc22/trainCheckpts/epoch319.pt")
-unet.load_state_dict(checkpoint['model_state_dict'])
-opt.load_state_dict(checkpoint['optimizer_state_dict'])
-epoch = checkpoint['epoch']
-loss = checkpoint['loss']
 
 
 # loop over epochs
@@ -93,9 +86,9 @@ startTime = time.time()
 print("Training started at: ", startTime)
 
 #tqdm gives a progress bar showing how much training done
-for e in tqdm(range(epoch, config.NUM_EPOCHS)):
+for e in tqdm(range(config.ITNET_EPOCHS)):
 	# set the model in training mode
-	unet.train()
+	itnet.train()
 	# initialize the total traininçg and validation loss
 	totalTrainLoss = 0
 	totalTestLoss = 0
@@ -104,7 +97,7 @@ for e in tqdm(range(epoch, config.NUM_EPOCHS)):
 		# send the input to the device
 		(x, y) = (x.to(dev), y.to(dev))
 		# perform a forward pass and calculate the training loss
-		pred = unet(x)
+		pred = itnet(x)
 		#pred = pred / torch.max(pred)
 		#y = y / torch.max(y)
 		loss = lossFunc(pred, y)
@@ -118,13 +111,13 @@ for e in tqdm(range(epoch, config.NUM_EPOCHS)):
 	# switch off autograd
 	with torch.no_grad():
 		# set the model in evaluation modde
-		unet.eval()
+		itnet.eval()
 		# loop over the validation set
 		for (x, y) in testLoader:
 			# send the input to the device
 			(x, y) = (x.to(dev), y.to(dev))
 			# make the predictions and calculate the validation loss
-			pred = unet(x)
+			pred = itnet(x)
 			totalTestLoss += lossFunc(pred, y)
 	# calculate the average training and validation loss
 	avgTrainLoss = totalTrainLoss / trainSteps
@@ -133,7 +126,7 @@ for e in tqdm(range(epoch, config.NUM_EPOCHS)):
 	H["train_loss"].append(avgTrainLoss.cpu().detach().numpy())
 	H["test_loss"].append(avgTestLoss.cpu().detach().numpy())
 	# print the model training and validation information
-	print("[INFO] EPOCH: {}/{}".format(e + 1, config.NUM_EPOCHS))
+	print("[INFO] EPOCH: {}/{}".format(e + 1, config.ITNET_EPOCHS))
 	print("Train loss: {:.6f}, Test loss: {:.4f}".format(
 		avgTrainLoss, avgTestLoss))
 	if (e+1) % 40 == 0:
@@ -143,7 +136,7 @@ for e in tqdm(range(epoch, config.NUM_EPOCHS)):
 		'optimizer_state_dict': opt.state_dict(),
 		'loss': loss,
 		}, 
-		"/local/scratch/public/obc22/trainCheckpts/epoch{}.pt".format(e))
+		"/local/scratch/public/obc22/trainCheckpts/ItNetepoch{}.pt".format(e))
 # display the total time needed to perform the training
 endTime = time.time()
 print("[INFO] total time taken to train the model: {:.2f}s".format(
@@ -157,12 +150,11 @@ plt.title("Training Loss on Dataset")
 plt.xlabel("Epoch #")
 plt.ylabel("Loss")
 plt.legend(loc="lower left")
-plt.savefig("/home/obc22/aitomotools/AItomotools/tmp.png")
+plt.savefig("/home/obc22/aitomotools/AItomotools/ITNETtmp.png")
 
-torch.save(unet, "/local/scratch/public/obc22/trainCheckpts/trainedUNET.pth")
+torch.save(unet, "/local/scratch/public/obc22/trainCheckpts/trainedITNET.pth")
 
 
 print("Done")
 
 #job no 63606
-

@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 import torchvision
 from torchvision import transforms
 from ts_algorithms import fdk
-from UNetDataLoader import loadData
+from ItNetDataLoader import loadData
 
 dev = torch.device("cuda:1")
 
