@@ -37,7 +37,10 @@ class loadData(Dataset):
 
     def getSino(self, imgClean):
         #takes clean img and turns into a sinogram
+        print(imgClean.shape)
         #vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(5, 300, 300))
+        print(imgClean.shape[1:])
+        print(imgClean.shape[1])
         vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(300/imgClean.shape[1], 300, 300))
         # Define acquisition geometry. We want fan beam, so lets make a "cone" beam and make it 2D. We also need sod and sdd, so we set them up to something medically reasonable.
         pg = ts.cone(
@@ -70,7 +73,7 @@ class loadData(Dataset):
         sino_noisy = torch.from_numpy(sino_noisy)
         output = sino_noisy.type(torch.float32)
         d = fdk(self.A, output)
-        print(np.shape(d))
+        #print(np.shape(d))
 
         if not self.outputSino:
             output = fdk(self.A, output)

@@ -96,4 +96,6 @@ for e in tqdm(range(config.NUM_EPOCHS)):
 	for (i, (x, y)) in enumerate(trainLoader):
 		# send the input to the device
 		(x, y) = (x.to(dev), y.to(dev))
-		print(x)
+		pred = unet(x)
+		print(np.shape(pred))
+		

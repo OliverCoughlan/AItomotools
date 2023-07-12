@@ -97,6 +97,8 @@ for e in tqdm(range(config.ITNET_EPOCHS)):
 		# send the input to the device
 		(x, y) = (x.to(dev), y.to(dev))
 		# perform a forward pass and calculate the training loss
+            
+
 		pred = itnet(x)
 		#pred = pred / torch.max(pred)
 		#y = y / torch.max(y)

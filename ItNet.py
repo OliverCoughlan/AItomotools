@@ -66,14 +66,13 @@ class ItNet(nn.Module):
         #print("ITNET")
         #print(sino)
         #print(A)
-        img = torch.empty(1,512,512).to(dev)
+        img = torch.empty(0,512,512).to(dev)
         for i in sino:
             img = torch.cat((img, fdk(A, i)), 0)
         #L,D,H,W = img.shape
-
+        img = torch.unsqueeze(img, 1)
         #s = torch.zeros(L,D,H,W)
-        print(img)
-        
+
         for i in range(self.noIter):
             #out = self.unet[i](torch.cat([img, s], dim=1))
             #img = self.resnetFac * img + out[:, 0:1, ...]
@@ -83,6 +82,9 @@ class ItNet(nn.Module):
             #    img = img - self.lmda[i] * fdk((A, y, img))
 
             img = self.unet[i](img)
+            print("IMG SINO")
+            print(img.shape)
+            print(sino.shape)
             img = img - self.lmda[i] * fdk(A, self.getSino(img) - sino)
         
         return img
@@ -90,6 +92,8 @@ class ItNet(nn.Module):
     def getSino(self, imgClean):
         #takes clean img and turns into a sinogram
         #vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(5, 300, 300))
+        print(imgClean.shape[1:])
+        print(imgClean.shape[1])
         vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(300/imgClean.shape[1], 300, 300))
         # Define acquisition geometry. We want fan beam, so lets make a "cone" beam and make it 2D. We also need sod and sdd, so we set them up to something medically reasonable.
         pg = ts.cone(
