@@ -95,6 +95,13 @@ class LPD(nn.Module):
         self.op=op
         self.A = to_autograd(op, num_extra_dims=1)
         self.AT = to_autograd(op.T, num_extra_dims=1)
+        #self.A(x) looks like a sinogram
+        #At is transpose 
+        #makes forward operator
+
+        #try using At instead of inverter
+
+
 
         # Define step size
         if self.model_parameters.step_size is None:
