@@ -98,6 +98,13 @@ for (i, (x, y)) in enumerate(testLoader):
 
 
 
-
-		
+plt.style.use("ggplot")
+plt.figure()
+plt.violinplot(unetErr, label="UNet")
+#plt.plot(H["test_loss"], label="test_loss")
+plt.title("PSNR Error on UNet Images")
+plt.xlabel("Error")
+plt.ylabel("Freq")
+plt.legend(loc="lower left")
+plt.savefig("/home/obc22/aitomotools/AItomotools/UNetErr.png")
 	

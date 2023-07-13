@@ -136,7 +136,7 @@ for e in tqdm(range(epoch, config.NUM_EPOCHS)):
 	print("[INFO] EPOCH: {}/{}".format(e + 1, config.NUM_EPOCHS))
 	print("Train loss: {:.6f}, Test loss: {:.4f}".format(
 		avgTrainLoss, avgTestLoss))
-	if (e+1) % 40 == 0:
+	if (e+1) % 10 == 0:
 		torch.save(
 		{'epoch': e+1,
 		'model_state_dict': unet.state_dict(),
