@@ -21,7 +21,7 @@ from ItNetDataLoader import loadData
 import config
 
 
-dev = torch.device("cuda:2")
+dev = torch.device("cuda:3")
 
 
 #split up training and testing imgs
@@ -167,7 +167,7 @@ plt.legend(loc="upper right")
 plt.savefig("/home/obc22/aitomotools/AItomotools/ItNetTrainingLoss.png")
 
 torch.save(itnet, "/local/scratch/public/obc22/ItNetTrainCheckpts/trainedITNET.pth")
-
+torch.save(itnet.state_dict(),  "/local/scratch/public/obc22/ItNetTrainCheckpts/trainedITNETstatedict.pth")
 
 print("Done")
 

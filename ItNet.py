@@ -30,7 +30,7 @@ from ItNetDataLoader import loadData
 import config
 
 #img = fdk(A, sinoNoisy)
-dev = torch.device("cuda:2")
+dev = torch.device("cuda:3")
     
 class ItNet(nn.Module):
     def __init__(self, noIter=config.ITNET_ITS, lmda=[1.1183, 1.3568, 1.4271, 0.0808], lmdaLearnt=True, resnetFac=1):
@@ -38,9 +38,15 @@ class ItNet(nn.Module):
 
         #self.unet = unet #should be in nn.ModuleList()
         self.unet = []
-        for i in range(config.ITNET_ITS):                                    # number of iterations
-            self.unet.append(UNet().to(dev))
-        self.unet = nn.ModuleList(self.unet)            
+        for i in range(noIter):                                    # number of iterations
+            unetTmp = UNet().to(dev)
+            stateDict = torch.load("/local/scratch/public/obc22/ItNetTrainCheckpts/trainedUNETstatedict.pth")
+            unetTmp.load_state_dict(stateDict)
+            self.unet.append(unetTmp)
+
+        self.unet = nn.ModuleList(self.unet)
+
+            
 
         self.noIter = noIter
         lmdaLearnt = [lmdaLearnt] * len(lmda)
@@ -68,7 +74,8 @@ class ItNet(nn.Module):
         #s = torch.zeros(L,D,H,W)
 
         for i in range(self.noIter):
-
+            self.unet[i].train()
+            #with torch.no_grad():
             img = self.unet[i](img)
             #img = img - self.lmda[i] * fdk(A, self.getSino(img) - sino)
             img2 = torch.zeros_like(img)
@@ -76,7 +83,7 @@ class ItNet(nn.Module):
                 img2[j]=fdk(A, self.getSino(img[j])-sino[j])
             img2 = img - self.lmda[i]*img2
         
-        return img
+        return img2
     
     def getSino(self, imgClean):
         #takes clean img and turns into a sinogram

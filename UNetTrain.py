@@ -154,6 +154,7 @@ plt.legend(loc="upper right")
 plt.savefig("/home/obc22/aitomotools/AItomotools/UNetTrainingLoss.png")
 
 torch.save(unet, "/local/scratch/public/obc22/UNetTrainCheckpts/trainedUNET.pth")
+torch.save(unet.state_dict(),  "/local/scratch/public/obc22/ItNetTrainCheckpts/trainedUNETstatedict.pth")
 
 
 print("Done")
