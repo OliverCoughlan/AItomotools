@@ -27,7 +27,7 @@ class loadData(Dataset):
                     #checks img is a slice
                     trainingImgs.append(os.path.join(subdir, imgs))
                     #adds the img to the list of training paths
-        trainingImgs = trainingImgs[0::5000] #47
+        trainingImgs = trainingImgs[0::47] #47
         if len(trainingImgs) > 4000:
             trainingImgs = trainingImgs[0:4000]
         #take every 40th img as this gives c.5000 training imgs

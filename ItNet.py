@@ -37,38 +37,41 @@ class ItNet(nn.Module):
         super(ItNet, self).__init__()
 
         #self.unet = unet #should be in nn.ModuleList()
+        self.dev = torch.device("cuda:3")
+
         self.unet = []
         for i in range(noIter):                                    # number of iterations
-            unetTmp = UNet().to(dev)
-            stateDict = torch.load("/local/scratch/public/obc22/ItNetTrainCheckpts/trainedUNETstatedict.pth")
+            unetTmp = UNet().to(self.dev)
+            stateDict = torch.load("/local/scratch/public/obc22/UNetTrainCheckpts/trainedUNETstatedict.pth")
             unetTmp.load_state_dict(stateDict)
             self.unet.append(unetTmp)
 
         self.unet = nn.ModuleList(self.unet)
-
-            
-
         self.noIter = noIter
         lmdaLearnt = [lmdaLearnt] * len(lmda)
         self.lmda = nn.ParameterList(
             [nn.Parameter(torch.tensor(lmda[i]), 
             requires_grad=lmdaLearnt[i]) for i in range(len(lmda))])
         self.resnetFac =resnetFac
-    
-    def forward(self, sino):
+        
         vg = ts.volume(shape=(1, *(512,512)), size=(300/512, 300, 300))
         # Define acquisition geometry. We want fan beam, so lets make a "cone" beam and make it 2D. We also need sod and sdd, so we set them up to something medically reasonable.
         pg = ts.cone(
             angles=360, shape=(1, 900), size=(1, 900), src_orig_dist=575, src_det_dist=1050
         )
         # A is now an operator.
-        A = ts.operator(vg, pg)
+        self.A = ts.operator(vg, pg)
+    
+    def forward(self, sino):
+
         #print("ITNET")
         #print(sino)
         #print(A)
-        img = torch.empty(0,512,512).to(dev)
+        sino =sino.to(dev)
+        img = torch.empty(0,512,512).to(self.dev)
         for i in sino:
-            img = torch.cat((img, fdk(A, i)), 0)
+            i = i.to(self.dev)
+            img = torch.cat((img, fdk(self.A, i)), 0)
         #L,D,H,W = img.shape
         img = torch.unsqueeze(img, 1)
         #s = torch.zeros(L,D,H,W)
@@ -80,8 +83,10 @@ class ItNet(nn.Module):
             #img = img - self.lmda[i] * fdk(A, self.getSino(img) - sino)
             img2 = torch.zeros_like(img)
             for j in range(img.shape[0]):
-                img2[j]=fdk(A, self.getSino(img[j])-sino[j])
-            img2 = img - self.lmda[i]*img2
+                diff = (self.getSino(img[j])-sino[j]).to(self.dev)
+                img2[j]=fdk(self.A, diff)
+            img2 = img - self.lmda[i]*img
+
         
         return img2
     
@@ -97,27 +102,3 @@ class ItNet(nn.Module):
         # A is now an operator.
         self.A = ts.operator(vg, pg)
         return self.A(imgClean)
-    
-    def set_learnable_iteration(self, index):
-        for i in list(range(self.get_num_iter_max())):
-            if i in index:
-                self.lmda[i].requires_grad = True
-                self.unet[i].unfreeze()
-            else:
-                self.lmda[i].requires_grad = False
-                self.unet[i].freeze()
-
-    def get_num_iter_max(self):
-        return len(self.lmda)
-    
-    def _print_info(self):
-        print("Current lambda(s):")
-        print(
-            [
-                self.lmda[it].item()
-                for it in range(len(self.lmda))
-                if self.lmda[it].numel() == 1
-            ]
-        )
-        print([self.lmda[it].requires_grad for it in range(len(self.lmda))])
-        print("Epoch done", flush=True)

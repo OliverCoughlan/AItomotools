@@ -16,6 +16,7 @@ from torchvision import transforms
 from tqdm import tqdm
 import time
 
+
 from ItNet import ItNet
 from ItNetDataLoader import loadData
 import config
@@ -87,6 +88,16 @@ print("Training started at: ", startTime)
 epochRep = round(config.ITNET_EPOCHS / config.ADAM_REPS)
 startEpoch = 0
 
+
+import gc
+for obj in gc.get_objects():
+	try:
+		if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+			print(obj.is_cuda)
+    
+	except:
+		pass
+
 for optStep in range(config.ADAM_REPS):
 	opt = Adam(itnet.parameters())
 	print(optStep)
@@ -156,6 +167,7 @@ endTime = time.time()
 print("[INFO] total time taken to train the çmodel: {:.2f}s".format(
 	endTime - startTime))
 
+
 plt.style.use("ggplot")
 plt.figure()
 plt.plot(H["train_loss"], label="Training Loss")
@@ -168,6 +180,16 @@ plt.savefig("/home/obc22/aitomotools/AItomotools/ItNetTrainingLoss.png")
 
 torch.save(itnet, "/local/scratch/public/obc22/ItNetTrainCheckpts/trainedITNET.pth")
 torch.save(itnet.state_dict(),  "/local/scratch/public/obc22/ItNetTrainCheckpts/trainedITNETstatedict.pth")
+
+import gc
+for obj in gc.get_objects():
+	try:
+		if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+			print(obj)
+			print(obj.is_cuda)
+    
+	except:
+		pass
 
 print("Done")
 
