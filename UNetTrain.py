@@ -129,14 +129,15 @@ for e in tqdm(range(config.NUM_EPOCHS)):
 	print("[INFO] EPOCH: {}/{}".format(e + 1, config.NUM_EPOCHS))
 	print("Train loss: {:.6f}, Test loss: {:.4f}".format(
 		avgTrainLoss, avgTestLoss))
-	if (e+1) % 40 == 0:
+	if (e+1) % 20 == 0:
 		torch.save(
 		{'epoch': e+1,
 		'model_state_dict': unet.state_dict(),
 		'optimizer_state_dict': opt.state_dict(),
-		'loss': loss,
+		'trainLoss': H["train_loss"],
+		'testLoss': H["test_loss"]
 		}, 
-		"/local/scratch/public/obc22/trainCheckpts/epoch{}.pt".format(e))
+		"/local/scratch/public/obc22/UNetTrainCheckpts/epoch{}.pt".format(e))
 # display the total time needed to perform the training
 endTime = time.time()
 print("[INFO] total time taken to train the model: {:.2f}s".format(
@@ -144,15 +145,15 @@ print("[INFO] total time taken to train the model: {:.2f}s".format(
 
 plt.style.use("ggplot")
 plt.figure()
-plt.plot(H["train_loss"], label="train_loss")
-#plt.plot(H["test_loss"], label="test_loss")
+plt.plot(H["train_loss"], label="Training Loss")
+plt.plot(H["test_loss"], label="Validation Loss")
 plt.title("Training Loss on Dataset")
-plt.xlabel("Epoch #")
+plt.xlabel("Epoch No.")
 plt.ylabel("Loss")
-plt.legend(loc="lower left")
-plt.savefig("/home/obc22/aitomotools/AItomotools/tmp.png")
+plt.legend(loc="upper right")
+plt.savefig("/home/obc22/aitomotools/AItomotools/UNetTrainingLoss.png")
 
-torch.save(unet, "/local/scratch/public/obc22/trainCheckpts/trainedUNET.pth")
+torch.save(unet, "/local/scratch/public/obc22/UNetTrainCheckpts/trainedUNET.pth")
 
 
 print("Done")

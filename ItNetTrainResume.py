@@ -21,7 +21,7 @@ from ItNetDataLoader import loadData
 import config
 
 
-dev = torch.device("cuda:2")
+dev = torch.device("cuda:1")
 
 
 #split up training and testing imgs
@@ -84,16 +84,22 @@ H = {"train_loss": [], "test_loss": []}
 startTime = time.time()
 print("Training started at: ", startTime)
 
+checkpoint = torch.load("/local/scratch/public/obc22/trainCheckpts/.pt")
+itnet.load_state_dict(checkpoint['model_state_dict'])
+epoch = checkpoint['epoch']
+loss = checkpoint['loss']
+
 epochRep = round(config.ITNET_EPOCHS / config.ADAM_REPS)
-startEpoch = 0
+startRep=epoch//epochRep
+startEpoch=epoch%epochRep + epochRep*startRep
 
-for optStep in range(config.ADAM_REPS):
+for optStep in range(startRep, config.ADAM_REPS):
 	opt = Adam(itnet.parameters())
-	print(optStep)
-
+	if optStep == startRep:
+	    opt.load_state_dict(checkpoint['optimizer_state_dict'])
 	#tqdm gives a progress bar showing how much training done
 	for e in tqdm(range(startEpoch, (optStep+1)*epochRep)):
-		startEpoch = (optStep+1)*epochRep 
+		startEpoch = (optStep+1)*epochRep # for later, in case i>2
 		# set the model in training mode
 		itnet.train()
 		# initialize the total traininçg and validation loss
@@ -105,6 +111,7 @@ for optStep in range(config.ADAM_REPS):
 			# send the input to the device
 			(x, y) = (x.to(dev), y.to(dev))
 			# perform a forward pass and calculate the training loss
+				
 
 			pred = itnet(x)
 			#pred = pred / torch.max(pred)
@@ -142,31 +149,30 @@ for optStep in range(config.ADAM_REPS):
 		print("[INFO] EPOCH: {}/{}".format(e + 1, config.ITNET_EPOCHS))
 		print("Train loss: {:.6f}, Test loss: {:.4f}".format(
 			avgTrainLoss, avgTestLoss))
-		if (e+1) % 10 == 0:
+		if (e+1) % 40 == 0:
 			torch.save(
 			{'epoch': e+1,
-			'model_state_dict': itnet.state_dict(),
+			'model_state_dict': unet.state_dict(),
 			'optimizer_state_dict': opt.state_dict(),
-			'trainLoss': H["train_loss"],
-			'testLoss': H["test_loss"]
+			'loss': loss,
 			}, 
-			"/local/scratch/public/obc22/ItNetTrainCheckpts/epoch{}.pt".format(e))
+			"/local/scratch/public/obc22/trainCheckpts/ItNetepoch{}.pt".format(e))
 	# display the total time needed to perform the training
 endTime = time.time()
-print("[INFO] total time taken to train the çmodel: {:.2f}s".format(
+print("[INFO] total time taken to train the model: {:.2f}s".format(
 	endTime - startTime))
 
 plt.style.use("ggplot")
 plt.figure()
-plt.plot(H["train_loss"], label="Training Loss")
-plt.plot(H["test_loss"], label="Validation Loss")
+plt.plot(H["train_loss"], label="train_loss")
+#plt.plot(H["test_loss"], label="test_loss")
 plt.title("Training Loss on Dataset")
-plt.xlabel("Epoch No.")
+plt.xlabel("Epoch #")
 plt.ylabel("Loss")
-plt.legend(loc="upper right")
-plt.savefig("/home/obc22/aitomotools/AItomotools/ItNetTrainingLoss.png")
+plt.legend(loc="lower left")
+plt.savefig("/home/obc22/aitomotools/AItomotools/ITNETtmp.png")
 
-torch.save(itnet, "/local/scratch/public/obc22/ItNetTrainCheckpts/trainedITNET.pth")
+torch.save(itnet, "/local/scratch/public/obc22/trainCheckpts/trainedITNET.pth")
 
 
 print("Done")

@@ -54,8 +54,8 @@ transforms = transforms.Compose([transforms.ToPILImage(),
 	transforms.ToTensor()])
 
 # create the train and test datasets
-trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=False)[0:1]
-testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=False)[0:1]
+trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=False)
+testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=False)
 print(f"[INFO] found {len(trainDS)} examples in the training set...")
 print(f"[INFO] found {len(testDS)} examples in the test set...")
 

@@ -2,7 +2,6 @@ import os
 import random
 import numpy as np
 import fnmatch
-import matplotlib.pyplot as plt
 import torch
 import torchvision
 import tomosipo as ts
@@ -28,7 +27,7 @@ class loadData(Dataset):
                     #checks img is a slice
                     trainingImgs.append(os.path.join(subdir, imgs))
                     #adds the img to the list of training paths
-        trainingImgs = trainingImgs[0::47] 
+        trainingImgs = trainingImgs[0::47] #47
         if len(trainingImgs) > 4000:
             trainingImgs = trainingImgs[0:4000]
         #take every 40th img as this gives c.5000 training imgs
@@ -37,10 +36,8 @@ class loadData(Dataset):
 
     def getSino(self, imgClean):
         #takes clean img and turns into a sinogram
-        print(imgClean.shape)
         #vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(5, 300, 300))
-        print(imgClean.shape[1:])
-        print(imgClean.shape[1])
+
         vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(300/imgClean.shape[1], 300, 300))
         # Define acquisition geometry. We want fan beam, so lets make a "cone" beam and make it 2D. We also need sod and sdd, so we set them up to something medically reasonable.
         pg = ts.cone(

@@ -30,13 +30,7 @@ from ItNetDataLoader import loadData
 import config
 
 #img = fdk(A, sinoNoisy)
-dev = torch.device("cuda:3")
-
-#for i in range(config.ITNET_ITS):                                    # number of iterations
-#    self.add_module(f"UNet_{i}", UNet().to(dev))
-#    unet = f"UNet_{i}"
-#    img = unet(img)
-#    img = lmda * fdk(A, A*img - sinoNoisy)
+dev = torch.device("cuda:2")
     
 class ItNet(nn.Module):
     def __init__(self, noIter=config.ITNET_ITS, lmda=[1.1183, 1.3568, 1.4271, 0.0808], lmdaLearnt=True, resnetFac=1):
@@ -74,26 +68,20 @@ class ItNet(nn.Module):
         #s = torch.zeros(L,D,H,W)
 
         for i in range(self.noIter):
-            #out = self.unet[i](torch.cat([img, s], dim=1))
-            #img = self.resnetFac * img + out[:, 0:1, ...]
-            #s = img[:, 1:, ...]
-            
-            #if i < self.noIter - 1:
-            #    img = img - self.lmda[i] * fdk((A, y, img))
 
             img = self.unet[i](img)
-            print("IMG SINO")
-            print(img.shape)
-            print(sino.shape)
-            img = img - self.lmda[i] * fdk(A, self.getSino(img) - sino)
+            #img = img - self.lmda[i] * fdk(A, self.getSino(img) - sino)
+            img2 = torch.zeros_like(img)
+            for j in range(img.shape[0]):
+                img2[j]=fdk(A, self.getSino(img[j])-sino[j])
+            img2 = img - self.lmda[i]*img2
         
         return img
     
     def getSino(self, imgClean):
         #takes clean img and turns into a sinogram
         #vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(5, 300, 300))
-        print(imgClean.shape[1:])
-        print(imgClean.shape[1])
+
         vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(300/imgClean.shape[1], 300, 300))
         # Define acquisition geometry. We want fan beam, so lets make a "cone" beam and make it 2D. We also need sod and sdd, so we set them up to something medically reasonable.
         pg = ts.cone(
