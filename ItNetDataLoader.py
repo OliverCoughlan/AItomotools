@@ -34,14 +34,12 @@ class loadData(Dataset):
 
     def getSino(self, imgClean):
         #takes clean img and turns into a sinogram
-        #vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(5, 300, 300))
 
+	    
         vg = ts.volume(shape=(1, *imgClean.shape[1:]), size=(300/imgClean.shape[1], 300, 300))
-        # Define acquisition geometry. We want fan beam, so lets make a "cone" beam and make it 2D. We also need sod and sdd, so we set them up to something medically reasonable.
-        pg = ts.cone(
+	pg = ts.cone(
             angles=360, shape=(1, 900), size=(1, 900), src_orig_dist=575, src_det_dist=1050
         )
-        # A is now an operator.
         self.A = ts.operator(vg, pg)
         return self.A(imgClean)
 
@@ -65,11 +63,8 @@ class loadData(Dataset):
         sino_noisy = ct.sinogram_add_noise(
         sino, I0=3500, sigma=5, cross_talk=0.05, flat_field=None, dark_field=None
         )
-        #sino_noisy = torch.from_numpy(sino_noisy)
-        #output = sino_noisy.type(torch.float32).to(self.dev)
         output = sino_noisy
 
         if not self.outputSino:
             output = fdk(self.A, output)
-        return (output.to(self.dev), imgClean.to(self.dev))#, imgToLoad) #output is either noisy sino or noisy img
-    #good for unet, but later will want noisy sinogram and clean img to train itnet
+        return (output.to(self.dev), imgClean.to(self.dev))
