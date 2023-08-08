@@ -36,7 +36,7 @@ for subdir in os.listdir(cd):
 		noPatients += 1
 		subDirList.append(f)
 
-#random.shuffle(subDirList)
+random.shuffle(subDirList)
 
 trainNo = int(np.round(noPatients * 0.8))
 validateNo = int(np.round(noPatients * 0.1))
@@ -98,44 +98,37 @@ for optStep in range(config.ADAM_REPS):
 		totalTestLoss = 0
 		# loop over the training set
 		for (i, (x, y)) in enumerate(trainLoader):
-			#print(i)
 			# send the input to the device
 			(x, y) = (x.to(dev), y.to(dev))
 			# perform a forward pass and calculate the training loss
 
 			pred = itnet(x)
-			#pred = pred / torch.max(pred)
-			#y = y / torch.max(y)
 			loss = lossFunc(pred, y)
-			# first, zero out any previously accumulated gradients, then
-			# perform backpropagation, and then update model parameters
+			
 			opt.zero_grad()
 			loss.backward()
 			opt.step()
 			# add the loss to the total training loss so far
 			totalTrainLoss += loss
-		# switch off autograd
 		with torch.no_grad():
-			# set the model in evaluation modde
 			itnet.eval()
 			# loop over the validation set
 			count = 0
 			for (x, y) in testLoader:
 				# send the input to the device
 				(x, y) = (x.to(dev), y.to(dev))
-				# make the predictions and calculate the validation loss
+	
 				
-				#print(count)
 				count+=1
 				pred = itnet(x)
 				totalTestLoss += lossFunc(pred, y)
 		# calculate the average training and validation loss
 		avgTrainLoss = totalTrainLoss / trainSteps
 		avgTestLoss = totalTestLoss / testSteps
-		# update our training history
+
 		H["train_loss"].append(avgTrainLoss.cpu().detach().numpy())
 		H["test_loss"].append(avgTestLoss.cpu().detach().numpy())
-		# print the model training and validation information
+
 		print("[INFO] EPOCH: {}/{}".format(e + 1, config.ITNET_EPOCHS))
 		print("Train loss: {:.6f}, Test loss: {:.4f}".format(
 			avgTrainLoss, avgTestLoss))
@@ -169,4 +162,3 @@ torch.save(itnet.state_dict(),  "/local/scratch/public/obc22/ItNetTrainCheckpts/
 
 print("Done")
 
-#job no 63606
