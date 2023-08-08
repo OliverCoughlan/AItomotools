@@ -30,7 +30,9 @@ def add_zoom_bubble(axes_image,
                     linewidth=3,
                     alpha=1.0,
                     **kwargs):
-    """Add a zoom bubble to an AxesImage
+    """Taken from https://github.com/ahendriksen/noise2inverse/tree/3841c471130c6b3638363f6dfbaedc214b848131
+    
+    Add a zoom bubble to an AxesImage
 
     All coordinates are in (x,y) form where the lowerleft corner is (0, 0)
     and the topright corner is (1,1).
@@ -226,25 +228,21 @@ def plots(noisyImg, cleanImg, FDKpredImg,
 	
 
 def make_predictions(unet, itnet, imagePath):
-	# set model to evaluation mode
 	unet.eval()
 	itnet.eval()
-	# turn off gradient tracking
 	vg = ts.volume(shape=(1, *(512,512)), size=(300/512, 300, 300))
 	pg = ts.cone(
         angles=360, shape=(1, 900), size=(1, 900), src_orig_dist=575, src_det_dist=1050)
 	A = ts.operator(vg, pg)
 
 	with torch.no_grad():
-		# load the image from disk, swap its color channels, cast it
-		# to float data type, and scale its pixel values
+		
 		
 		noPatients = 0
 		subDirList = []
 		cd = "/local/scratch/public/AItomotools/processed/LIDC-IDRI/"
 		for file in os.listdir(cd):
 			f = os.path.join(cd, file)
-			# checking if it is a file
 			if os.path.isfile(f) != True:
 				noPatients += 1
 				subDirList.append(f)
@@ -286,10 +284,7 @@ def make_predictions(unet, itnet, imagePath):
 			TVpredImg = TVpredImg.cpu().numpy()
 			cleanImg = cleanImg.cpu().numpy()
 			noisyImg = noisyImg.cpu().numpy()
-			# filter out the weak predictions and convert them to integers
-			#predImg = (predImg > config.THRESHOLD) * 255
-			#predImg = predImg.astype(np.uint8)
-			# prepare a plot for visualization
+
 			plots(noisyImg, cleanImg, FDKpredImg,
 			TVpredImg, UpredImg, IpredImg, plotfName)
 
@@ -301,7 +296,6 @@ print("[INFO] loading up test image paths...")
 #imagePaths = np.random.choice(imagePaths, size=10)
 imagePaths = ["/local/scratch/public/AItomotools/processed/LIDC-IDRI/LIDC-IDRI-0001/slice_0.npy"]
 
-# load our model from disk and flash it to the current device
 print("[INFO] load up model...")
 itnet = ItNet().to(dev)
 itnetSD = torch.load("/local/scratch/public/obc22/ItNetTrainCheckpts/FINALepoch259.pt")['model_state_dict']
@@ -310,9 +304,7 @@ itnet.load_state_dict(itnetSD)
 unet = UNet().to(dev)
 unetSD = torch.load("/local/scratch/public/obc22/UNetTrainCheckpts/trainedUNETstatedict.pth")
 unet.load_state_dict(unetSD)
-# iterate over the randomly selected test image paths
 for path in imagePaths:
-	# make predictions and visualize the results
 	make_predictions(unet, itnet, path)
 	
 
@@ -320,7 +312,6 @@ for path in imagePaths:
 
 def Compplots(noisyImgB, cleanImgB, best,
 	  noisyImgW,cleanImgW,worst, modelName):
-	# initialize our figure
 	be = ssim(cleanImgB[0][0], best, data_range = best.max()-best.min())
 	we = ssim(cleanImgW[0][0], worst, data_range = worst.max()-worst.min())
 	bfdkE = ssim(cleanImgB[0][0], noisyImgB[0][0], data_range = noisyImgB[0][0].max()-noisyImgB[0][0].min())
@@ -332,21 +323,18 @@ def Compplots(noisyImgB, cleanImgB, best,
 	b = ax[0,1].imshow(noisyImgB[0][0].T, vmin=0,vmax=2.5)
 	a = ax[0,0].imshow(cleanImgB[0][0].T, vmin=0,vmax=2.5)
 	c = ax[0,2].imshow(best.T, vmin=0,vmax=2.5)
-	# set the titles of the subplots
 	ax[0,0].set_title("Predicted Image (FDK), SSIM = {:.3f}".format(bfdkE))
 	ax[0,1].set_title("Clean Image")
 	ax[0,2].set_title("Predicted Image (Best), SSIM = {:.3f}".format(be))
 	ax[1,0].set_title("Predicted Image (FDK), SSIM = {:.3f}".format(wfdkE))
 	ax[1,1].set_title("Clean Image")
 	ax[1,2].set_title("Predicted Image (Worst), SSIM = {:.3f}".format(we))
-	# set the layout of the figure and display it
 	add_zoom_bubble(a)
 	add_zoom_bubble(b)
 	add_zoom_bubble(c)
 	e = ax[1,1].imshow(noisyImgW[0][0].T, vmin=0,vmax=2.5)
 	d = ax[1,0].imshow(cleanImgW[0][0].T, vmin=0,vmax=2.5)
 	f = ax[1,2].imshow(worst.T, vmin=0,vmax=2.5)
-	# set the titles of the subplots
 	add_zoom_bubble(d)
 	add_zoom_bubble(e)
 	add_zoom_bubble(f)
@@ -372,25 +360,20 @@ def Compplots(noisyImgB, cleanImgB, best,
 	
 
 def compPred(unet, itnet, modelName, bestIdx, worstIdx):
-	# set model to evaluation mode
 	unet.eval()
 	itnet.eval()
-	# turn off gradient tracking
 	vg = ts.volume(shape=(1, *(512,512)), size=(300/512, 300, 300))
 	pg = ts.cone(
         angles=360, shape=(1, 900), size=(1, 900), src_orig_dist=575, src_det_dist=1050)
 	A = ts.operator(vg, pg)
 
 	with torch.no_grad():
-		# load the image from disk, swap its color channels, cast it
-		# to float data type, and scale its pixel values
-		
+
 		noPatients = 0
 		subDirList = []
 		cd = "/local/scratch/public/AItomotools/processed/LIDC-IDRI/"
 		for file in os.listdir(cd):
 			f = os.path.join(cd, file)
-			# checking if it is a file
 			if os.path.isfile(f) != True:
 				noPatients += 1
 				subDirList.append(f)
@@ -453,7 +436,6 @@ def compPred(unet, itnet, modelName, bestIdx, worstIdx):
 
 
 def plotWorst(noisyImgW, cleanImgW, TVpredImgW, UpredImgW, IpredImgW):
-	# initialize our figure
 	fdkE = ssim(cleanImgW[0][0], noisyImgW[0][0], data_range = noisyImgW[0][0].max()-noisyImgW[0][0].min())
 	tvE = ssim(cleanImgW[0][0], TVpredImgW[0], data_range = TVpredImgW[0].max()-TVpredImgW[0].min())
 	uE = ssim(cleanImgW[0][0], UpredImgW, data_range = UpredImgW.max()-UpredImgW[0].min())
@@ -472,13 +454,11 @@ def plotWorst(noisyImgW, cleanImgW, TVpredImgW, UpredImgW, IpredImgW):
 	ax[1,0].set_title("Predicted Image (TV Min), SSIM = {:.3f}".format(tvE))
 	ax[1,1].set_title("Predicted Image (UNet), SSIM = {:.3f}".format(uE))
 	ax[1,2].set_title("Predicted Image (ItNet), SSIM = {:.3f}".format(iE))
-	# set the layout of the figure and display it
 	add_zoom_bubble(b)
 	add_zoom_bubble(c)
 	d = ax[1,0].imshow(TVpredImgW[0].T, vmin=0,vmax=2.5)
 	e = ax[1,1].imshow(UpredImgW.T, vmin=0,vmax=2.5)
 	f = ax[1,2].imshow(IpredImgW.T, vmin=0,vmax=2.5)
-	# set the titles of the subplots
 	add_zoom_bubble(d)
 	add_zoom_bubble(e)
 	add_zoom_bubble(f)
@@ -504,25 +484,20 @@ def plotWorst(noisyImgW, cleanImgW, TVpredImgW, UpredImgW, IpredImgW):
 	
 
 def worstComp(unet, itnet, worstIdx):
-	# set model to evaluation mode
 	unet.eval()
 	itnet.eval()
-	# turn off gradient tracking
 	vg = ts.volume(shape=(1, *(512,512)), size=(300/512, 300, 300))
 	pg = ts.cone(
         angles=360, shape=(1, 900), size=(1, 900), src_orig_dist=575, src_det_dist=1050)
 	A = ts.operator(vg, pg)
 
 	with torch.no_grad():
-		# load the image from disk, swap its color channels, cast it
-		# to float data type, and scale its pixel values
-		
+
 		noPatients = 0
 		subDirList = []
 		cd = "/local/scratch/public/AItomotools/processed/LIDC-IDRI/"
 		for file in os.listdir(cd):
 			f = os.path.join(cd, file)
-			# checking if it is a file
 			if os.path.isfile(f) != True:
 				noPatients += 1
 				subDirList.append(f)
