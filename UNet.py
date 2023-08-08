@@ -6,7 +6,7 @@ import numpy as np
 
 import tomosipo as ts
 from tomosipo.torch_support import to_autograd
-from ts_algorithms import fbp #importing conventional fdk which is used in lpd
+from ts_algorithms import fbp #importing conventional fdk which is used in unet
 
 import torch
 import torch.nn as nn
@@ -17,12 +17,10 @@ from collections import OrderedDict
 import config
 
 
-##Code for UNet
 class UNet(nn.Module):
     def __init__(self, inChan=config.IN_CHAN, outChan=config.OUT_CHAN, 
     baseDim=config.BASE_DIM, dropFac=config.DROP_FAC, 
     kerSiz = config.KER_SIZE, noGrp=config.NO_GROUPS):
-        # set properties of UNet
         super(UNet, self).__init__()
 
         self.encoder1 = self.block(inChan,baseDim,noGrp,dropFac, "enc1")
