@@ -8,7 +8,7 @@ import os
 # initialize learning rate, number of epochs to train for, and the
 # batch size
 INIT_LR = 0.0002
-NUM_EPOCHS = 400 #just do 1 for now so we can try training on holly
+NUM_EPOCHS = 150 #just do 1 for now so we can try training on holly
 BATCH_SIZE = 4
 # define the input image dimensions
 INPUT_IMAGE_WIDTH = 512

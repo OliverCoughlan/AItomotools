@@ -1,25 +1,54 @@
+# =============================================================================
+# This file is part of AItomotools library
+# License : BSD-3
+#
+# Author  : Ander Biguri
+# Modifications: -
+# =============================================================================
+
+
 # math/science imports
 import numpy as np
 import torch
+import torch.nn.functional as F
+import tomosipo as ts
 
 # AItomotools imports
-from AItomotools.CTtools.ct_geometry import Geometry
+from AItomotoolsNEW.CTtools.ct_geometry import Geometry
 
 
 def from_HU_to_normal(img):
     """
-    Converts image in Hounsfield Units (air-> -1000, bone->500) into a [0-1] image. 
+    Converts image in Hounsfield Units (air-> -1000, bone->500) into a [0-1] image.
     Comercial scanners use a piecewise linear function. Check STIR for real values. (https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json)
     """
-    return np.maximum((img + 1000) / 3000, 0)
+
+    if isinstance(img, np.ndarray):
+        return np.maximum((img + 1000) / 3000, 0)
+    elif isinstance(img, torch.Tensor):
+        return torch.clip((img + 1000) / 3000, min=0)
+    else:
+        raise NotImplementedError
+
 
 def from_HU_to_mu(img):
     """
-    Converts image in Hounsfield Units (air-> -1000, bone->500) into linear attenuation coefficient (air-> 0.0012, 
-    bone->1.52 g/cm^3). Approximate. 
+    Converts image in Hounsfield Units (air-> -1000, bone->500) into linear attenuation coefficient (air-> 0.0012,
+    bone->1.52 g/cm^3). Approximate.
     Comercial scanners use a piecewise linear function. Check STIR for real values. (https://raw.githubusercontent.com/UCL/STIR/85cc1940c297b1749cf44a9fba937d7cefdccd47/src/utilities/share/ct_slopes.json)
     """
-    return ((1.52 - 0.0012) / (500 + 1000)) * (img.astype(np.float32) + 1000) + 0.0012
+
+    if isinstance(img, np.ndarray):
+        return np.maximum(
+            ((1.52 - 0.0012) / (500 + 1000)) * (img.astype(np.float32) + 1000) + 0.0012,
+            0,
+        )
+    elif isinstance(img, torch.Tensor):
+        return torch.clip(
+            ((1.52 - 0.0012) / (500 + 1000)) * (img.float() + 1000) + 0.0012, min=0.0
+        )
+    else:
+        raise NotImplementedError
 
 
 def sinogram_add_noise(
@@ -36,19 +65,18 @@ def sinogram_add_noise(
     if torch.is_tensor(proj):
         istorch = True
         dev = proj.get_device()
+        if dev == -1:
+            dev = torch.device("cpu")
     elif isinstance(proj, np.ndarray):
         # all good
         istorch = False
         proj = torch.from_numpy(proj).cuda(dev)
     else:
         raise ValueError("numpy or torch tensor expected")
-    
-
     if dark_field is None:
         dark_field = torch.zeros(proj.shape, device=dev)
     if flat_field is None:
         flat_field = torch.ones(proj.shape, device=dev)
-
     max_val = torch.amax(
         proj
     )  # alternatively the highest power of 2 close to this value, but lets leave it as is.
@@ -87,8 +115,6 @@ def sinogram_add_noise(
         return proj.cpu().detach().numpy()
 
 
-
-
 def from_HU_to_material_id(img):
     """
     Converts an image in Hounsfield units into a material index
@@ -106,10 +132,23 @@ def from_HU_to_material_id(img):
     return materials
 
 
-def forward_projection_fan(image,geo,backend="tomosipo"):
+def make_operator(geo):
+    vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
+    pg = ts.cone(
+        angles=geo.angles,
+        shape=geo.detector_shape,
+        size=geo.detector_size,
+        src_orig_dist=geo.dso,
+        src_det_dist=geo.dsd,
+    )
+    A = ts.operator(vg, pg)
+    return A
+
+
+def forward_projection_fan(image, geo, backend="tomosipo"):
     """
     Produces a noise free forward projection, given np.array image, a size (in real world units), a sinogram shape and size,
-    distances from source to detector DSD and distance from source to object DSO. 
+    distances from source to detector DSD and distance from source to object DSO.
     May support other backends than tomosipo
     """
 
@@ -118,21 +157,24 @@ def forward_projection_fan(image,geo,backend="tomosipo"):
     # You can add other backends here
     import tomosipo as ts
 
-    if isinstance(image,np.ndarray):
-        image=torch.from_numpy(image).float().cuda()
-    if len(image.shape)==3:
-        if image.shape[0]>1: # there is no reason to have this constraint
+    if isinstance(image, np.ndarray):
+        image = torch.from_numpy(image).float().cuda()
+    if len(image.shape) == 3:
+        if image.shape[0] > 1:  # there is no reason to have this constraint
             raise ValueError("Image must be 2D")
-    elif len(image.shape)==2:
-        image=torch.unsqueeze(image,axis=0)
+    elif len(image.shape) == 2:
+        image = torch.unsqueeze(image, axis=0)
     else:
         raise ValueError("Image must be 2D")
 
     vg = ts.volume(shape=geo.image_shape, size=geo.image_size)
-    pg = ts.cone(angles=geo.angles, shape=geo.detector_shape, size=geo.detector_size, src_orig_dist=geo.dso, src_det_dist=geo.dsd)
+    pg = ts.cone(
+        angles=geo.angles,
+        shape=geo.detector_shape,
+        size=geo.detector_size,
+        src_orig_dist=geo.dso,
+        src_det_dist=geo.dsd,
+    )
     A = ts.operator(vg, pg)
-    sino=A(image)[0]
+    sino = A(image)[0]
     return sino.cpu().detach().numpy()
-
-
-

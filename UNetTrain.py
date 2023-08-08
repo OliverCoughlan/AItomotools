@@ -27,7 +27,7 @@ dev = torch.device("cuda:3")
 #split up training and testing imgs
 noPatients = 0
 subDirList = []
-cd = "/local/scratch/public/AItomotools/processed/LIDC-IDRI/"
+cd = "/store/DAMTP/ab2860/AItomotools/data/AItomotools/processed/LIDC-IDRI/"
 for subdir in os.listdir(cd):
 	f = os.path.join(cd, subdir)
 	# checking if it is a file
@@ -47,26 +47,21 @@ testList = subDirList[trainNo+validateNo:]
 
 
 
-# define transformations
-transforms = transforms.Compose([transforms.ToPILImage(),
- 	transforms.Resize((config.INPUT_IMAGE_HEIGHT,
-		config.INPUT_IMAGE_WIDTH)),
-	transforms.ToTensor()])
 
 # create the train and test datasets
-trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=False)
-testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=False)
+trainDS = loadData(imgPaths=trainList, outputSino=False)
+testDS = loadData(imgPaths=testList, outputSino=False)
 print(f"[INFO] found {len(trainDS)} examples in the training set...")
 print(f"[INFO] found {len(testDS)} examples in the test set...")
 
 
 # create the training and test data loaders
 trainLoader = DataLoader(trainDS, shuffle=True,
-	batch_size=config.BATCH_SIZE, pin_memory=True)
+	batch_size=config.BATCH_SIZE, pin_memory=False)
 
 
 testLoader = DataLoader(testDS, shuffle=False,
-	batch_size=config.BATCH_SIZE, pin_memory=True)
+	batch_size=config.BATCH_SIZE, pin_memory=False)
 
 
 # initialize our UNet model
@@ -84,6 +79,8 @@ H = {"train_loss": [], "test_loss": []}
 # loop over epochs
 startTime = time.time()
 print("Training started at: ", startTime)
+
+valMin = 100
 
 #tqdm gives a progress bar showing how much training done
 for e in tqdm(range(config.NUM_EPOCHS)):
@@ -125,11 +122,12 @@ for e in tqdm(range(config.NUM_EPOCHS)):
 	# update our training history
 	H["train_loss"].append(avgTrainLoss.cpu().detach().numpy())
 	H["test_loss"].append(avgTestLoss.cpu().detach().numpy())
+	valLoss = avgTestLoss.cpu().detach().numpy()
 	# print the model training and validation information
 	print("[INFO] EPOCH: {}/{}".format(e + 1, config.NUM_EPOCHS))
 	print("Train loss: {:.6f}, Test loss: {:.4f}".format(
 		avgTrainLoss, avgTestLoss))
-	if (e+1) % 20 == 0:
+	if (e+1) % 10 == 0:
 		torch.save(
 		{'epoch': e+1,
 		'model_state_dict': unet.state_dict(),
@@ -137,7 +135,11 @@ for e in tqdm(range(config.NUM_EPOCHS)):
 		'trainLoss': H["train_loss"],
 		'testLoss': H["test_loss"]
 		}, 
-		"/local/scratch/public/obc22/UNetTrainCheckpts/epoch{}.pt".format(e))
+		"/local/scratch/public/obc22/UNetTrainCheckpts/v2epoch{}.pt".format(e))
+	if valLoss < valMin:
+		valMin = valLoss
+		torch.save(unet.state_dict(),  "/local/scratch/public/obc22/UNetTrainCheckpts/UNetV2MinValSD.pth")
+
 # display the total time needed to perform the training
 endTime = time.time()
 print("[INFO] total time taken to train the model: {:.2f}s".format(
@@ -151,10 +153,10 @@ plt.title("Training Loss on Dataset")
 plt.xlabel("Epoch No.")
 plt.ylabel("Loss")
 plt.legend(loc="upper right")
-plt.savefig("/home/obc22/aitomotools/AItomotools/UNetTrainingLoss.png")
+plt.savefig("/home/obc22/aitomotools/AItomotools/ItNetTrainLossv2.png")
 
-torch.save(unet, "/local/scratch/public/obc22/UNetTrainCheckpts/trainedUNET.pth")
-torch.save(unet.state_dict(),  "/local/scratch/public/obc22/ItNetTrainCheckpts/trainedUNETstatedict.pth")
+torch.save(unet, "/local/scratch/public/obc22/UNetTrainCheckpts/UnetV2.pth")
+torch.save(unet.state_dict(),  "/local/scratch/public/obc22/UNetTrainCheckpts/UnetV2SD.pth")
 
 
 print("Done")

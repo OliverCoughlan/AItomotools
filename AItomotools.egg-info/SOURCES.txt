@@ -19,8 +19,14 @@ AItomotools/data_loaders/luna16_dataset.py
 AItomotools/data_loaders/LUNA16/__init__.py
 AItomotools/data_loaders/LUNA16/dowload_luna16.py
 AItomotools/models/FBPConvNet.py
+AItomotools/models/ItNet.py
+AItomotools/models/ItNetTrain.py
+AItomotools/models/ItNet_Dataset.py
+AItomotools/models/ItNet_Try1.py
 AItomotools/models/LPD.py
+AItomotools/models/LPD_Commented.py
 AItomotools/models/__init__.py
+AItomotools/models/config.py
 AItomotools/models/template.py
 AItomotools/utils/__init__.py
 AItomotools/utils/math.py

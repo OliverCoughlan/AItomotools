@@ -6,17 +6,16 @@ import torch
 import torchvision
 import tomosipo as ts
 from ts_algorithms import fdk
-import AItomotools.CTtools.ct_utils as ct
+import AItomotoolsNEW.CTtools.ct_utils as ct
 
 from torch.utils.data import Dataset
 
 class loadData(Dataset):
-    def __init__(self, transforms, imgPaths, outputSino):
+    def __init__(self, imgPaths, outputSino):
 		# store the image and mask filepaths, and augmentation
 		# transforms
-        self.transforms = transforms
         self.trainList = imgPaths
-        self.dev = torch.device("cuda:3")
+        self.dev =  torch.device("cuda:3")
         self.outputSino = outputSino
     
         trainingImgs = []
@@ -32,7 +31,6 @@ class loadData(Dataset):
             trainingImgs = trainingImgs[0:4000]
         #take every 40th img as this gives c.5000 training imgs
         self.trainingImgs = trainingImgs
-        print(trainingImgs[0])
 
     def getSino(self, imgClean):
         #takes clean img and turns into a sinogram
@@ -58,21 +56,20 @@ class loadData(Dataset):
         imgClean = np.load(imgToLoad)
         imgClean[imgClean < -1000] = -1000
         imgClean = ct.from_HU_to_mu(imgClean)
-        imgClean = torch.from_numpy(imgClean)#.to(self.dev) #make in gpu
         imgClean = np.expand_dims(imgClean, 0).astype("float32")
+        imgClean = torch.from_numpy(imgClean).to(self.dev) #make in gpu
 
 
-        sino = self.getSino(imgClean)
+        sino = self.getSino(imgClean).to(self.dev)
 
         sino_noisy = ct.sinogram_add_noise(
-        sino, I0=3500, sigma=5, crosstalk=0.05, flat_field=None, dark_field=None
+        sino, I0=3500, sigma=5, cross_talk=0.05, flat_field=None, dark_field=None
         )
-        sino_noisy = torch.from_numpy(sino_noisy)
-        output = sino_noisy.type(torch.float32)
-        d = fdk(self.A, output)
-        #print(np.shape(d))
+        #sino_noisy = torch.from_numpy(sino_noisy)
+        #output = sino_noisy.type(torch.float32).to(self.dev)
+        output = sino_noisy
 
         if not self.outputSino:
             output = fdk(self.A, output)
-        return (output, imgClean) #output is either noisy sino or noisy img
+        return (output.to(self.dev), imgClean.to(self.dev))#, imgToLoad) #output is either noisy sino or noisy img
     #good for unet, but later will want noisy sinogram and clean img to train itnet

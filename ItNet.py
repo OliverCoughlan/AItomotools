@@ -30,7 +30,6 @@ from ItNetDataLoader import loadData
 import config
 
 #img = fdk(A, sinoNoisy)
-dev = torch.device("cuda:3")
     
 class ItNet(nn.Module):
     def __init__(self, noIter=config.ITNET_ITS, lmda=[1.1183, 1.3568, 1.4271, 0.0808], lmdaLearnt=True, resnetFac=1):
@@ -42,7 +41,7 @@ class ItNet(nn.Module):
         self.unet = []
         for i in range(noIter):                                    # number of iterations
             unetTmp = UNet().to(self.dev)
-            stateDict = torch.load("/local/scratch/public/obc22/UNetTrainCheckpts/trainedUNETstatedict.pth")
+            stateDict = torch.load("/local/scratch/public/obc22/trainCheckpts/epoch119.pt")['model_state_dict']
             unetTmp.load_state_dict(stateDict)
             self.unet.append(unetTmp)
 
@@ -62,12 +61,12 @@ class ItNet(nn.Module):
         # A is now an operator.
         self.A = ts.operator(vg, pg)
     
-    def forward(self, sino):
+    def forward2(self, sino):
 
         #print("ITNET")
         #print(sino)
         #print(A)
-        sino =sino.to(dev)
+        sino =sino.to(self.dev)
         img = torch.empty(0,512,512).to(self.dev)
         for i in sino:
             i = i.to(self.dev)
@@ -85,10 +84,32 @@ class ItNet(nn.Module):
             for j in range(img.shape[0]):
                 diff = (self.getSino(img[j])-sino[j]).to(self.dev)
                 img2[j]=fdk(self.A, diff)
-            img2 = img - self.lmda[i]*img
+            #img2 = img - self.lmda[i]*img2 #v4
+            img = img - self.lmda[i]*img2 #v3
+            #img2 = img - self.lmda[i]*img #v1
+            
 
-        
-        return img2
+        return img
+    
+    def forward(self, sino):
+
+        B, C, W, H = sino.shape
+        img = sino.new_zeros(B, 1, *[1,512,512][1:])
+        update = sino.new_zeros(B, 1, *[1,512,512][1:])
+        # Start from FDK
+        for i in range(sino.shape[0]):
+            img[i] = fdk(self.A, sino[i])
+
+        for i in range(self.noIter):#range(self.model_parameters.n_iters):
+            unet = self.unet[i]
+            img = unet(img)
+
+            for j in range(img.shape[0]):
+                update[j] = self.lmda[i] * fdk(self.A, self.getSino(img[j]) - sino[j])
+                #update[j] = self.lmda[i] * self.A.T(self.getSino(img[j]) - sino[j])
+            img = img - update
+
+        return img
     
     def getSino(self, imgClean):
         #takes clean img and turns into a sinogram

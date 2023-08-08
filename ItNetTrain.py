@@ -22,7 +22,7 @@ from ItNetDataLoader import loadData
 import config
 
 
-dev = torch.device("cuda:3")
+dev = torch.device("cuda:2")
 
 
 #split up training and testing imgs
@@ -48,26 +48,21 @@ testList = subDirList[trainNo+validateNo:]
 
 
 
-# define transformations
-transforms = transforms.Compose([transforms.ToPILImage(),
- 	transforms.Resize((config.INPUT_IMAGE_HEIGHT,
-		config.INPUT_IMAGE_WIDTH)),
-	transforms.ToTensor()])
 
 # create the train and test datasets
-trainDS = loadData(transforms=transforms, imgPaths=trainList, outputSino=True)
-testDS = loadData(transforms=transforms, imgPaths=testList, outputSino=True)
+trainDS = loadData(imgPaths=trainList, outputSino=True)
+testDS = loadData(imgPaths=testList, outputSino=True)
 print(f"[INFO] found {len(trainDS)} examples in the training set...")
 print(f"[INFO] found {len(testDS)} examples in the test set...")
 
 
 # create the training and test data loaders
-trainLoader = DataLoader(trainDS, shuffle=True,
-	batch_size=config.ITNET_BATCH_SIZE, pin_memory=True)
+trainLoader = DataLoader(trainDS, shuffle=False,
+	batch_size=config.ITNET_BATCH_SIZE, pin_memory=False)
 
 
 testLoader = DataLoader(testDS, shuffle=False,
-	batch_size=config.ITNET_BATCH_SIZE, pin_memory=True)
+	batch_size=config.ITNET_BATCH_SIZE, pin_memory=False)
 
 
 # initialize our UNet model
@@ -88,15 +83,6 @@ print("Training started at: ", startTime)
 epochRep = round(config.ITNET_EPOCHS / config.ADAM_REPS)
 startEpoch = 0
 
-
-import gc
-for obj in gc.get_objects():
-	try:
-		if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-			print(obj.is_cuda)
-    
-	except:
-		pass
 
 for optStep in range(config.ADAM_REPS):
 	opt = Adam(itnet.parameters())
@@ -161,10 +147,10 @@ for optStep in range(config.ADAM_REPS):
 			'trainLoss': H["train_loss"],
 			'testLoss': H["test_loss"]
 			}, 
-			"/local/scratch/public/obc22/ItNetTrainCheckpts/epoch{}.pt".format(e))
+			"/local/scratch/public/obc22/ItNetTrainCheckpts/FINALepoch{}.pt".format(e))
 	# display the total time needed to perform the training
 endTime = time.time()
-print("[INFO] total time taken to train the çmodel: {:.2f}s".format(
+print("[INFO] total time taken to train the model: {:.2f}s".format(
 	endTime - startTime))
 
 
@@ -176,20 +162,10 @@ plt.title("Training Loss on Dataset")
 plt.xlabel("Epoch No.")
 plt.ylabel("Loss")
 plt.legend(loc="upper right")
-plt.savefig("/home/obc22/aitomotools/AItomotools/ItNetTrainingLoss.png")
+plt.savefig("/home/obc22/aitomotools/AItomotools/ItNetTrainLossFINAL.png")
 
-torch.save(itnet, "/local/scratch/public/obc22/ItNetTrainCheckpts/trainedITNET.pth")
-torch.save(itnet.state_dict(),  "/local/scratch/public/obc22/ItNetTrainCheckpts/trainedITNETstatedict.pth")
-
-import gc
-for obj in gc.get_objects():
-	try:
-		if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-			print(obj)
-			print(obj.is_cuda)
-    
-	except:
-		pass
+torch.save(itnet, "/local/scratch/public/obc22/ItNetTrainCheckpts/ItNetTrainedFINAL.pth")
+torch.save(itnet.state_dict(),  "/local/scratch/public/obc22/ItNetTrainCheckpts/ItNetSDFINAL.pth")
 
 print("Done")
 

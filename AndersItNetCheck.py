@@ -1,4 +1,6 @@
+from mpl_toolkits.axes_grid1 import ImageGrid
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 import torch
 import os
@@ -10,11 +12,10 @@ import torchvision
 from torchvision import transforms
 from ts_algorithms import fdk
 from ItNetDataLoader import loadData
-import matplotlib.patches as patches
-
-from UNet import UNet
+from ItNet import ItNet as ItNet2
 
 dev = torch.device("cuda:2")
+
 
 def add_zoom_bubble(axes_image,
                     inset_center=(0.25, 0.25),
@@ -145,32 +146,73 @@ def add_zoom_bubble(axes_image,
 def plots(noisyImg, cleanImg, predImg):
 	# initialize our figure
 
-	figure, ax = plt.subplots(nrows=1, ncols=3, figsize=(10, 10))
+	noPatients = 0
+	subDirList = []
+	cd = "/local/scratch/public/AItomotools/processed/LIDC-IDRI/"
+	for file in os.listdir(cd):
+		f = os.path.join(cd, file)
+		# checking if it is a file
+		if os.path.isfile(f) != True:
+			noPatients += 1
+			subDirList.append(f)
+		
+	trainNo = int(np.round(noPatients * 0.8))
+	trainList = subDirList[:trainNo]
+	testList = subDirList[trainNo:]
 
+	trainDS = loadData(imgPaths=trainList, outputSino=False)
+	trainLoader = DataLoader(trainDS, shuffle=False,
+	batch_size=config.ITNET_BATCH_SIZE, pin_memory=False)
+	
+	for (i, (x, y)) in enumerate(trainLoader):
+		if i < 1:
+			print(i)
+			x = x.to(dev)
+			y = y.to(dev)
+		else:
+			break
+
+	noisyImg = x.to(dev)
+	noisyImg = noisyImg.cpu().numpy()
+	
+	figure, ax = plt.subplots(nrows=1, ncols=4, figsize=(10, 10))
 
 	a = ax[0].imshow(noisyImg[0].T, vmin=0,vmax=2.5)
 	b = ax[1].imshow(cleanImg[0].T, vmin=0,vmax=2.5)
 	c = ax[2].imshow(predImg[0].T, vmin=0,vmax=2.5)
-	add_zoom_bubble(a)#
-	add_zoom_bubble(b)
-	add_zoom_bubble(c)
+	d = ax[3].imshow(predImg[0].T, vmin=0,vmax=2.5)
 	# set the titles of the subplots
 	ax[0].set_title("Noisy Image")
 	ax[1].set_title("Clean Image")
-	ax[2].set_title("Predicted Image")
+	ax[2].set_title("Ander's ItNet")
+	ax[3].set_title("Oliver's ItNet")	
 	# set the layout of the figure and display it
+	add_zoom_bubble(a)
+	add_zoom_bubble(b)
+	add_zoom_bubble(c)
+	add_zoom_bubble(d)
+
 	figure.subplots_adjust(right=0.8)
 	cbar_ax = figure.add_axes([0.15, 0.3, 0.75, 0.02])
 	figure.colorbar(c, cax=cbar_ax, location = "bottom")
 	figure.tight_layout()
-	plt.savefig("/home/obc22/aitomotools/AItomotools/imgComparisonTmp.png")
+	ax[0].get_yaxis().set_visible(False)
+	ax[0].get_xaxis().set_visible(False)
+	ax[1].get_yaxis().set_visible(False)
+	ax[1].get_xaxis().set_visible(False)
+	ax[2].get_yaxis().set_visible(False)
+	ax[2].get_xaxis().set_visible(False)
+	ax[3].get_yaxis().set_visible(False)
+	ax[3].get_xaxis().set_visible(False)
+
+	plt.savefig("/home/obc22/aitomotools/AItomotools/ItNetimgComparison.png")
 	
 
-def make_predictions(model, imagePath):
+def make_predictions(model,m2, imagePath):
 	# set model to evaluation mode
 	model.eval()
+	m2.eval()
 	# turn off gradient tracking
-
 	
 	with torch.no_grad():
 		# load the image from disk, swap its color channels, cast it
@@ -190,11 +232,9 @@ def make_predictions(model, imagePath):
 		trainList = subDirList[:trainNo]
 		testList = subDirList[trainNo:]
 
-		trainDS = loadData(imgPaths=trainList, outputSino=False)
-		trainLoader = DataLoader(trainDS, shuffle=True,
-		batch_size=config.BATCH_SIZE, pin_memory=False)
-
-		dev = torch.device("cuda:2")
+		trainDS = loadData(imgPaths=trainList, outputSino=True)
+		trainLoader = DataLoader(trainDS, shuffle=False,
+		batch_size=config.ITNET_BATCH_SIZE, pin_memory=False)
 		
 		for (i, (x, y)) in enumerate(trainLoader):
 			if i < 1:
@@ -209,16 +249,16 @@ def make_predictions(model, imagePath):
 
 		noisyImg = x
 		cleanImg = y
-
-		predImg = model(x).squeeze(1)
+		predImg = model(x).squeeze()
 		predImg = predImg.cpu().numpy()
+		im2 = m2(x).squeeze().cpu().numpy()
 		cleanImg = cleanImg.cpu().numpy()
 		noisyImg = noisyImg.cpu().numpy()
 		# filter out the weak predictions and convert them to integers
 		#predImg = (predImg > config.THRESHOLD) * 255
 		#predImg = predImg.astype(np.uint8)
 		# prepare a plot for visualization
-		plots(noisyImg, cleanImg, predImg)
+		plots(noisyImg, cleanImg, predImg, m2)
 
 
 		return
@@ -230,11 +270,26 @@ imagePaths = ["/local/scratch/public/AItomotools/processed/LIDC-IDRI/LIDC-IDRI-0
 
 # load our model from disk and flash it to the current device
 print("[INFO] load up model...")
-unet = UNet().to(dev)
-statedict = torch.load("/local/scratch/public/obc22/UNetTrainCheckpts/tmp.pth")
-statedict = torch.load("/local/scratch/public/obc22/trainCheckpts/epoch119.pt")['model_state_dict']
-unet.load_state_dict(statedict)# iterate over the randomly selected test image paths
 
+from AItomotoolsNEW.models.ItNet import ItNet, UNet
+itnet = ItNet.load("/store/DAMTP/ab2860/wip_models/ItNet_check_0381.pt")[0].to(dev)
+
+
+it2 = ItNet2().to(dev)
+statedict = torch.load("/local/scratch/public/obc22/ItNetTrainCheckpts/epoch479.pt")['model_state_dict']
+it2.load_state_dict(statedict)
+# iterate over the randomly selected test image paths
 for path in imagePaths:
 	# make predictions and visualize the results
-	make_predictions(unet, path)
+	make_predictions(itnet,it2, path)
+	
+loss = torch.load("/local/scratch/public/obc22/ItNetTrainCheckpts/v3epoch19.pt")['trainLoss']
+
+plt.style.use("ggplot")
+plt.figure()
+plt.plot(loss, label="Training Loss")
+plt.title("Training Loss on Dataset")
+plt.xlabel("Epoch No.")
+plt.ylabel("Loss")
+plt.legend(loc="upper right")
+plt.savefig("/home/obc22/aitomotools/AItomotools/ItNetLossCheck.png")

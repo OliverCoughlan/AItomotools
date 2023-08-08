@@ -8,7 +8,7 @@ import torch.nn as nn
 import torchvision
 import tomosipo as ts
 from ts_algorithms import fdk
-import AItomotools.CTtools.ct_utils as ct
+import AItomotoolsNEW.CTtools.ct_utils as ct
 from torch.nn import BCEWithLogitsLoss
 from torch.optim import Adam
 from torch.utils.data import DataLoader
@@ -16,12 +16,15 @@ from torchvision import transforms
 from tqdm import tqdm
 import time
 
-from ItNet import ItNet
+
+from AItomotoolsNEW.models.ItNet import ItNet
+from AItomotoolsNEW.models import AItomomodel
+
 from ItNetDataLoader import loadData
 import config
 
 
-dev = torch.device("cuda:3")
+dev = torch.device("cuda:2")
 
 
 #split up training and testing imgs
@@ -46,6 +49,8 @@ validateList = subDirList[trainNo:trainNo+validateNo]
 testList = subDirList[trainNo+validateNo:]
 
 
+
+
 # create the train and test datasets
 trainDS = loadData(imgPaths=trainList, outputSino=True)
 testDS = loadData(imgPaths=testList, outputSino=True)
@@ -54,7 +59,7 @@ print(f"[INFO] found {len(testDS)} examples in the test set...")
 
 
 # create the training and test data loaders
-trainLoader = DataLoader(trainDS, shuffle=False,
+trainLoader = DataLoader(trainDS, shuffle=True,
 	batch_size=config.ITNET_BATCH_SIZE, pin_memory=False)
 
 
@@ -63,7 +68,7 @@ testLoader = DataLoader(testDS, shuffle=False,
 
 
 # initialize our UNet model
-itnet = ItNet().to(dev)
+itnet = ItNet(AItomomodel.AItomoModel).to(dev)
 # initialize loss function and optimizer
 lossFunc = nn.MSELoss()
 # calculate steps per epoch for training and test set
@@ -77,23 +82,17 @@ H = {"train_loss": [], "test_loss": []}
 startTime = time.time()
 print("Training started at: ", startTime)
 
-checkpoint = torch.load("/local/scratch/public/obc22/ItNetTrainCheckpts/FINALepoch29.pt")
-itnet.load_state_dict(checkpoint['model_state_dict'])
-epoch = checkpoint['epoch']
-H["train_loss"] = checkpoint['trainLoss']
-H["test_loss"] = checkpoint['testLoss']
-
 epochRep = round(config.ITNET_EPOCHS / config.ADAM_REPS)
-startRep=epoch//epochRep
-startEpoch=epoch%epochRep + epochRep*startRep
+startEpoch = 0
 
-for optStep in range(startRep, config.ADAM_REPS):
+
+for optStep in range(config.ADAM_REPS):
 	opt = Adam(itnet.parameters())
-	if optStep == startRep:
-	    opt.load_state_dict(checkpoint['optimizer_state_dict'])
+	print(optStep)
+
 	#tqdm gives a progress bar showing how much training done
 	for e in tqdm(range(startEpoch, (optStep+1)*epochRep)):
-		startEpoch = (optStep+1)*epochRep # for later, in case i>2
+		startEpoch = (optStep+1)*epochRep 
 		# set the model in training mode
 		itnet.train()
 		# initialize the total traininçg and validation loss
@@ -105,7 +104,6 @@ for optStep in range(startRep, config.ADAM_REPS):
 			# send the input to the device
 			(x, y) = (x.to(dev), y.to(dev))
 			# perform a forward pass and calculate the training loss
-				
 
 			pred = itnet(x)
 			#pred = pred / torch.max(pred)
@@ -143,7 +141,7 @@ for optStep in range(startRep, config.ADAM_REPS):
 		print("[INFO] EPOCH: {}/{}".format(e + 1, config.ITNET_EPOCHS))
 		print("Train loss: {:.6f}, Test loss: {:.4f}".format(
 			avgTrainLoss, avgTestLoss))
-		if (e+1) % 10 == 0:
+		if (e+1) % 20 == 0:
 			torch.save(
 			{'epoch': e+1,
 			'model_state_dict': itnet.state_dict(),
@@ -151,11 +149,12 @@ for optStep in range(startRep, config.ADAM_REPS):
 			'trainLoss': H["train_loss"],
 			'testLoss': H["test_loss"]
 			}, 
-			"/local/scratch/public/obc22/ItNetTrainCheckpts/FINALepoch{}.pt".format(e))
+			"/local/scratch/public/obc22/ItNetTrainCheckpts/Aepoch{}.pt".format(e))
 	# display the total time needed to perform the training
 endTime = time.time()
 print("[INFO] total time taken to train the model: {:.2f}s".format(
 	endTime - startTime))
+
 
 plt.style.use("ggplot")
 plt.figure()
@@ -165,11 +164,10 @@ plt.title("Training Loss on Dataset")
 plt.xlabel("Epoch No.")
 plt.ylabel("Loss")
 plt.legend(loc="upper right")
-plt.savefig("/home/obc22/aitomotools/AItomotools/ItNetTrainLossFINAL.png")
+plt.savefig("/home/obc22/aitomotools/AItomotools/AnderItNetTrainLoss.png")
 
-torch.save(itnet, "/local/scratch/public/obc22/ItNetTrainCheckpts/ItNetTrainedFINAL.pth")
-torch.save(itnet.state_dict(),  "/local/scratch/public/obc22/ItNetTrainCheckpts/ItNetSDFINAL.pth")
-
+torch.save(itnet, "/local/scratch/public/obc22/ItNetTrainCheckpts/AnderItnetTrained.pth")
+torch.save(itnet.state_dict(),  "/local/scratch/public/obc22/ItNetTrainCheckpts/AnderItNetTrainedSD.pth")
 
 print("Done")
 
