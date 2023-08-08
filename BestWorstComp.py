@@ -20,6 +20,8 @@ from skimage.metrics import structural_similarity as ssim
 
 dev = torch.device("cuda:2")
 
+"""Script to find and generate images of the best and worst reconstructions each method has produced on the givrn data set"""
+
 
 def add_zoom_bubble(axes_image,
                     inset_center=(0.25, 0.25),
@@ -30,7 +32,9 @@ def add_zoom_bubble(axes_image,
                     linewidth=3,
                     alpha=1.0,
                     **kwargs):
-    """Add a zoom bubble to an AxesImage
+    """Code taken from https://github.com/ahendriksen/noise2inverse/tree/3841c471130c6b3638363f6dfbaedc214b848131
+    
+    Add a zoom bubble to an AxesImage
 
     All coordinates are in (x,y) form where the lowerleft corner is (0, 0)
     and the topright corner is (1,1).
@@ -148,7 +152,9 @@ def add_zoom_bubble(axes_image,
     )
 
 def plots(unet, itnet):
-	# initialize our figure
+	"""Code to plot the figures
+ 
+ 	unet, itnet are both input models"""
 
 
 	vg = ts.volume(shape=(1, *(512,512)), size=(300/512, 300, 300))
